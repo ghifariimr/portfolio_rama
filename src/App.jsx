@@ -3,26 +3,38 @@ import { motion } from "framer-motion";
 import { useMotion, Img, Sil, Bg, Scr, Wipe, navigate, usePath, Link } from "./shared.jsx";
 import { NAV, EXP, ORG, PROJECTS, CERTS, EMAIL, LINKEDIN, PHONE_DISPLAY, PHONE_TEL } from "./data.js";
 import Intro from "./Intro.jsx";
+import PageTransition from "./PageTransition.jsx";
+import ExperienceMedia from "./ExperienceMedia.jsx";
+import MediaImage from "./MediaImage.jsx";
+import { resolveMedia } from "./media.js";
+import { ProjectVisual } from "./mock.jsx";
 import ProjectPage from "./ProjectPage.jsx";
 
 /* =============================== */
 
 function Portrait() {
-  const src = "/images/ghifarii.png";
+  const [src, setSrc] = useState("/images/ghifarii.png");
   const [mode, setMode] = useState("load"); // load | cut | flat | none
   useEffect(() => {
-    const im = new Image();
-    im.onload = () => {
-      try {
-        const c = document.createElement("canvas"); c.width = c.height = 48;
-        const x = c.getContext("2d"); x.drawImage(im, 0, 0, 48, 48);
-        const t = [[0, 0], [47, 0], [0, 12], [47, 12], [0, 24], [47, 24]].filter(([a, b]) => x.getImageData(a, b, 1, 1).data[3] < 16).length;
-        if (t < 4) console.warn("ghifarii.png has no transparent background. Use a cutout PNG (see README) for the character-cutout outline.");
-        setMode(t >= 4 ? "cut" : "flat");
-      } catch { setMode("flat"); }
-    };
-    im.onerror = () => setMode("none");
-    im.src = src;
+    let alive = true;
+    resolveMedia("/images/ghifarii.png").then((url) => {
+      if (!alive) return;
+      if (!url) { setMode("none"); return; }
+      setSrc(url);
+      const im = new Image();
+      im.onload = () => {
+        try {
+          const c = document.createElement("canvas"); c.width = c.height = 48;
+          const x = c.getContext("2d"); x.drawImage(im, 0, 0, 48, 48);
+          const t = [[0, 0], [47, 0], [0, 12], [47, 12], [0, 24], [47, 24]].filter(([a, b]) => x.getImageData(a, b, 1, 1).data[3] < 16).length;
+          if (t < 4) console.warn("ghifarii image has no transparent background. Use a cutout PNG (see README) for the character-cutout outline.");
+          setMode(t >= 4 ? "cut" : "flat");
+        } catch { setMode("flat"); }
+      };
+      im.onerror = () => setMode("none");
+      im.src = url;
+    });
+    return () => { alive = false; };
   }, []);
   if (mode === "load") return null;
   if (mode === "none") return <div className="pfall" />;
@@ -54,17 +66,16 @@ function FlipCard() {
   return (
     <div className={`flip ${on ? "on" : ""}`} role="button" tabIndex={0} aria-pressed={on} onClick={flip}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } }}
-      aria-label="Photo card. Press to flip. The back shows the name and the date the photo was taken, 16.08.25.">
+      aria-label="Photo card. Press to flip. The back reads: New beginnings loading.">
       <span className="fi">
         <span className="ff">
-          <Img src="/images/ghifarii-card.jpg" alt="Ghifarii Muhammad Ramadhan in a black suit" className="fphoto" />
+          <span className="fphoto"><MediaImage src="/images/ghifarii-card.jpg" alt="Ghifarii Muhammad Ramadhan in a black suit" eager fallback={<span className="fph" />} /></span>
           <span className="ftag">TAP TO FLIP ↻</span>
         </span>
         <span className="fb"><span className="fbi">
           <i className="fdia" />
-          <strong>GHIFARII</strong> <span className="fname">MUHAMMAD RAMADHAN</span>
-          <small className="flbl">PHOTO TAKEN</small>
-          <time className="fdate" dateTime="2025-08-16">16.08.25</time>
+          <span className="fhead"><strong>GHIFARII</strong> <span className="fname">MUHAMMAD RAMADHAN</span></span>
+          <span className="fquote">New beginnings loading.</span>
           <Scr className="fscr">NEXT.</Scr>
         </span></span>
       </span>
@@ -97,11 +108,11 @@ function ResumeBtn() {
 }
 
 function Heading({ n, title, note }) {
-  const { slide, up } = useMotion();
+  const { slide, head } = useMotion();
   return (
     <div className="head">
       <motion.span className="bignum" {...slide()}>{n}</motion.span>
-      <motion.h2 className="paper" {...up(0.15)}>{title}</motion.h2>
+      <motion.h2 className="paper" {...head(0.1)}>{title}</motion.h2>
       {note && <Scr className="hnote">{note}</Scr>}
     </div>
   );
@@ -112,8 +123,8 @@ function Cursor() {
   useEffect(() => {
     if (!matchMedia("(hover: hover) and (pointer: fine)").matches || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const root = document.documentElement, d = dot.current, r = ring.current;
-    d.style.display = r.style.display = "block";
-    const KIND = [[".pcard", "VIEW"], [".xi", "READ"], [".orow", "SELECT"], [".links a,.giant,.fcon a", "SEND"]];
+    let shown = false;
+    const KIND = [[".pcard", "VIEW"], [".xi", "READ"], [".orow", "SELECT"], [".links a,.giant,.fcon a", "SEND"], [".cc", "OPEN"]];
     let raf = 0, ev;
     const mv = (e) => {
       ev = e;
@@ -121,6 +132,7 @@ function Cursor() {
       raf = requestAnimationFrame(() => {
         raf = 0;
         const { clientX: x, clientY: y, target: t } = ev, tr = `translate3d(${x}px,${y}px,0)`;
+        if (!shown) { shown = true; d.style.display = r.style.display = "block"; }
         d.style.transform = tr; r.style.transform = tr;
         root.style.setProperty("--mx", ((x / innerWidth - 0.5) * 2).toFixed(3));
         root.style.setProperty("--my", ((y / innerHeight - 0.5) * 2).toFixed(3));
@@ -168,29 +180,30 @@ function PCard({ p }) {
     s.setProperty("--mx", (x - 0.5) * 2); s.setProperty("--my", (y - 0.5) * 2); s.setProperty("--gx", x * 100 + "%"); s.setProperty("--gy", y * 100 + "%");
   };
   return (
-    <article className="pcard" onMouseMove={mv}>
+    <Link to={`/projects/${p.slug}`} className="pcard" draggable={false} onMouseMove={mv} aria-label={`Open project ${p.n}: ${p.t} — ${p.sub}`}>
       <i className="poff" />
       <div className="pin">
         <i className="glow" /><i className="acc" />
-        <span className="pno">PROJECT {p.n}</span><span className="sel">SELECT ▸</span><Scr className="pscr-c">{p.n === "01" ? "PLAN." : p.n === "02" ? "BUILD." : "DELIVER."}</Scr>
+        <span className="pno">PROJECT {p.n}</span><span className="sel">SELECT ▸</span>
+        <Scr className="pscr-c">{p.n === "01" ? "PLAN." : p.n === "02" ? "BUILD." : "DELIVER."}</Scr>
         <div className="pgrid">
-          <Img src={p.img} className="shot" alt={p.t} />
+          <div className="shot"><ProjectVisual slug={p.slug} src={p.mainImage} alt="" v={0} eager /></div>
           <div className="cbody">
             <h3>{p.t}</h3><p className="psub">{p.sub}</p>
             <small>ROLE</small><p className="chip">{p.role}</p>
             <small>{p.lab}</small>
             <ul>{p.items.map((x) => <li key={x}>{x}</li>)}</ul>
             {p.d && <p className="pd">{p.d}</p>}
-            <Link to={`/projects/${p.slug}`} className="more">VIEW PROJECT <b>→</b></Link>
+            <span className="more">VIEW PROJECT <b>→</b></span>
           </div>
         </div>
       </div>
-    </article>
+    </Link>
   );
 }
 
 function Carousel() {
-  const ref = useRef(null), dr = useRef(null);
+  const ref = useRef(null), dr = useRef(null), drag = useRef(false);
   const [i, setI] = useState(0), [dg, setDg] = useState(false);
   const { reduce } = useMotion();
   const step = () => { const el = ref.current; return el.children[0].offsetWidth + parseFloat(getComputedStyle(el).columnGap || 0); };
@@ -201,7 +214,7 @@ function Carousel() {
     if (!d.on && Math.abs(e.clientX - d.x) > 6) { d.on = true; setDg(true); e.currentTarget.setPointerCapture(e.pointerId); }
     if (d.on) ref.current.scrollLeft = d.l - (e.clientX - d.x);
   };
-  const up = () => { const d = dr.current; dr.current = null; if (d?.on) { setDg(false); to(Math.round(ref.current.scrollLeft / step())); } };
+  const up = () => { const d = dr.current; dr.current = null; if (d?.on) { drag.current = true; setTimeout(() => (drag.current = false), 0); setDg(false); to(Math.round(ref.current.scrollLeft / step())); } };
   const key = (e) => { if (e.key === "ArrowRight") { e.preventDefault(); to(i + 1); } if (e.key === "ArrowLeft") { e.preventDefault(); to(i - 1); } };
   return (
     <div className="car" tabIndex={0} onKeyDown={key} aria-label="Projects carousel">
@@ -210,7 +223,7 @@ function Carousel() {
         <span className="count"><b>{String(i + 1).padStart(2, "0")}</b> / {String(PROJECTS.length).padStart(2, "0")}</span>
         <button onClick={() => to(i + 1)} disabled={i === PROJECTS.length - 1}>NEXT →</button>
       </div>
-      <div ref={ref} className={`track ${dg ? "dragging" : ""}`} onScroll={(e) => setI(Math.round(e.currentTarget.scrollLeft / step()))}
+      <div ref={ref} className={`track ${dg ? "dragging" : ""}`} onClickCapture={(e) => { if (drag.current) { e.preventDefault(); e.stopPropagation(); } }} onScroll={(e) => setI(Math.round(e.currentTarget.scrollLeft / step()))}
         onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
         {PROJECTS.map((p) => <PCard key={p.n} p={p} />)}
       </div>
@@ -231,6 +244,7 @@ export default function App() {
     if (project) { window.scrollTo(0, 0); return; }
     const h = location.hash.slice(1);
     if (h) setTimeout(() => document.getElementById(h)?.scrollIntoView(), 60);
+    else { try { const y = Number(sessionStorage.getItem("rama-y:/")); sessionStorage.removeItem("rama-y:/"); if (y) requestAnimationFrame(() => window.scrollTo(0, y)); } catch {} }
   }, [path, entered]);
   useEffect(() => {
     const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && setActive(e.target.id)), { rootMargin: "-45% 0px -50% 0px" });
@@ -245,6 +259,7 @@ export default function App() {
   return (
     <>
       <div className="grain" /><Bg /><Cursor />
+      <PageTransition />
       {introOn && <Intro onEnter={enter} onDone={() => setIntroOn(false)} />}
       {entered && (
       <div className={`site ${introOn ? "in" : ""}`}>
@@ -257,7 +272,7 @@ export default function App() {
       {project ? <ProjectPage p={project} /> : (<>
       {/* HERO */}
       <header id="home" className="hero">
-        <Sil className="s-h" v="stand" />
+        <Sil className="s-h" v="thief" />
         <i className="slash" />
         <div className="hero-l">
           <h1>
@@ -283,7 +298,7 @@ export default function App() {
 
       <Wipe k="red" />
       {/* ABOUT */}
-      <section id="about" className="sec"><Sil className="s-a" />
+      <section id="about" className="sec"><Sil className="s-a" v="crouch" />
         <Heading n="01" title="ABOUT ME" note="PLAN." />
         <div className="about">
           <motion.div {...up()} className="about-l">
@@ -304,7 +319,7 @@ export default function App() {
 
       <Wipe k="panel" />
       {/* EXPERIENCE */}
-      <section id="experience" className="sec diag"><Sil className="s-x" />
+      <section id="experience" className="sec diag"><Sil className="s-x" v="lunge" />
         <Heading n="02" title="EXPERIENCE" note="BUILD." />
         <div className="xps">
           {EXP.map((e, i) => (
@@ -325,6 +340,7 @@ export default function App() {
                     <motion.p className="xdesc" variants={rise}>{e.desc}</motion.p>
                     {e.pts.length > 0 && <ul>{e.pts.map((p) => <li key={p}>{p}</li>)}</ul>}
                   </div>
+                  <ExperienceMedia media={e.media} />
                   <Scr className="xscr">{e.scr}</Scr>
                 </div>
               </article>
@@ -335,7 +351,7 @@ export default function App() {
 
       <Wipe k="slash" />
       {/* ORGANIZATION */}
-      <section id="organization" className="sec"><Sil className="s-o" />
+      <section id="organization" className="sec"><Sil className="s-o" v="tall" />
         <Heading n="03" title="ORGANIZATION" note="KEEP MOVING." />
         <p className="orgname">NIPPON BUNKA-BU <span>GROWTH → RESPONSIBILITY → LEADERSHIP</span></p>
         <div className="org"><motion.i className="orgline" initial={reduce ? false : { scaleY: 0 }} whileInView={{ scaleY: 1 }} viewport={{ once: true }} transition={{ duration: 1, ease: "easeInOut" }} />
@@ -352,7 +368,7 @@ export default function App() {
       <Wipe k="halftone" />
       {/* PROJECTS */}
       <section id="projects" className="sec diag">
-        <Sil className="s-p" />
+        <Sil className="s-p" v="coat" />
         <Heading n="04" title="PROJECTS" note="DELIVER." />
         <Carousel />
       </section>
@@ -363,17 +379,17 @@ export default function App() {
         <Heading n="05" title="CERTIFICATION" note="FOCUS." />
         <div className="certs">
           {CERTS.map((c, i) => (
-            <motion.article key={c.name} className="cc" {...up(i * 0.1)}>
+            <motion.a key={c.name} className="cc" href={c.certificateUrl} target="_blank" rel="noopener noreferrer" aria-label={`View certificate: ${c.name}, ${c.by} (opens in a new tab)`} {...up(i * 0.1)}>
               <i className="ccred" />
               <div className="ccp"><div className="cin">
                 <span className="clab">{c.label}</span>
                 <h3>{c.name}</h3>
                 <p className="cby">{c.by}</p>
                 <div className="cmeta"><span>{c.year}</span>{c.valid && <span>VALID UNTIL {c.valid}</span>}</div>
-                {c.href && <a className="vc" href={c.href} target="_blank" rel="noopener noreferrer">VIEW CREDENTIAL →</a>}
+                <span className="cta">VIEW CERTIFICATE <b>↗</b></span>
                 <Scr className="cscr2">{c.scr}</Scr>
               </div></div>
-            </motion.article>
+            </motion.a>
           ))}
         </div>
       </section>
@@ -381,7 +397,7 @@ export default function App() {
       <Wipe k="split" />
       {/* CONTACT */}
       <section id="contact" className="sec contact">
-        <Sil className="s-c" />
+        <Sil className="s-c" v="vigilante" />
         <span className="cn">06</span><Scr className="cscr">EXECUTE.</Scr>
         <motion.h2 {...slide()}>LET'S<br /><em>CONNECT.</em></motion.h2>
         <p>Have a project, opportunity, or challenge worth discussing?</p>

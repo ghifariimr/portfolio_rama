@@ -18,7 +18,7 @@ export default function Intro({ onEnter, onDone }) {
     <div className={`intro ${phase}`} role="dialog" aria-label="Portfolio intro">
       <div className="i-dots" />
       <i className="i-rp a" /><i className="i-rp b" /><i className="i-slash" />
-      <Sil className="i-sil" v="stand" />
+      <Sil className="i-sil" v="thief" />
       <i className="i-dm d1" /><i className="i-dm d2" /><i className="i-dm d3" /><i className="i-dm d4" />
       <svg className="i-scr" viewBox="0 0 320 90" aria-hidden="true"><path d="M8 70 C60 40 110 84 170 56 S270 70 312 30" /><path d="M262 8 L300 24 L270 44" /></svg>
       <Scr className="i-note">PLAN. BUILD. LEAD.</Scr>
