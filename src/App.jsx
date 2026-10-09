@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useMotion, Img, Sil, Bg, Scr, Wipe, navigate, usePath, Link } from "./shared.jsx";
-import { NAV, EXP, ORG, PROJECTS, CERTS, EMAIL, LINKEDIN, PHONE_DISPLAY, PHONE_TEL } from "./data.js";
+import { NAV, EXP, ORG, PROJECTS, CERTS, EMAIL, LINKEDIN, PHONE_DISPLAY, PHONE_TEL, RESUME_FILES, RESUME_DOWNLOAD_NAME } from "./data.js";
 import Intro from "./Intro.jsx";
 import PageTransition from "./PageTransition.jsx";
 import ExperienceMedia from "./ExperienceMedia.jsx";
@@ -85,14 +85,14 @@ function FlipCard() {
 
 function ResumeBtn() {
   const [miss, setMiss] = useState(false);
-  const urls = ["/Ghifarii_Muhammad_Ramadhan_Resume.pdf", "/Ghifarii-Muhammad-Ramadhan-Resume.pdf"];
   const click = async (e) => {
     e.preventDefault(); setMiss(false);
-    for (const u of urls) {
+    for (const u of RESUME_FILES) {
       try {
         const r = await fetch(u, { method: "HEAD" });
-        if (r.ok && (r.headers.get("content-type") || "").includes("pdf")) {
-          const a = document.createElement("a"); a.href = u; a.download = "Ghifarii_Muhammad_Ramadhan_Resume.pdf";
+        // a missing file on a dev server / SPA host comes back as index.html (text/html) - skip those
+        if (r.ok && !(r.headers.get("content-type") || "").includes("text/html")) {
+          const a = document.createElement("a"); a.href = u; a.download = RESUME_DOWNLOAD_NAME;
           document.body.appendChild(a); a.click(); a.remove(); return;
         }
       } catch {}
@@ -101,8 +101,8 @@ function ResumeBtn() {
   };
   return (
     <>
-      <a className="btn" href={urls[0]} download="Ghifarii_Muhammad_Ramadhan_Resume.pdf" onClick={click}>DOWNLOAD RESUME <b>→</b></a>
-      {miss && <span className="rmiss" role="status">Resume PDF not found. Add it to /public.</span>}
+      <a className="btn" href={RESUME_FILES[0]} download={RESUME_DOWNLOAD_NAME} onClick={click}>DOWNLOAD RESUME</a>
+      {miss && <span className="rmiss" role="status">Resume PDF not found. Put it at public/resume.pdf</span>}
     </>
   );
 }
